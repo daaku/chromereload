@@ -40,12 +40,18 @@ func (a *app) wsURL() (string, error) {
 	defer res.Body.Close()
 
 	var tabs []struct {
+		Type                 string
 		WebSocketDebuggerURL string `json:"WebSocketDebuggerUrl"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&tabs); err != nil {
 		return "", errors.WithStack(err)
 	}
-	return tabs[0].WebSocketDebuggerURL, nil
+	for _, t := range tabs {
+		if t.Type == "page" {
+			return t.WebSocketDebuggerURL, nil
+		}
+	}
+	return "", errors.New("no open tabs")
 }
 
 func (a *app) reload() error {
