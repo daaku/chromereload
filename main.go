@@ -13,19 +13,14 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-var reloadCmd = []byte(`
-{
-	"id": 1,
-	"method": "Page.reload",
-	"params": {
-		"ignoreCache": true
-	}
+type reload struct {
+	IgnoreCache bool `json:"ignoreCache"`
 }
-`)
 
 type app struct {
-	host string
-	port int
+	host        string
+	port        int
+	ignoreCache bool
 }
 
 func (a *app) debuggerURL() string {
@@ -67,6 +62,15 @@ func (a *app) reload() error {
 	}
 	defer ws.Close()
 
+	reloadCmd, err := json.Marshal(map[string]interface{}{
+		"id":     0,
+		"method": "Page.reload",
+		"params": reload{IgnoreCache: a.ignoreCache},
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	if _, err := ws.Write(reloadCmd); err != nil {
 		return errors.WithStack(err)
 	}
@@ -85,6 +89,7 @@ func run() error {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fs.StringVar(&a.host, "host", "localhost", "remote debugger host")
 	fs.IntVar(&a.port, "port", 9222, "remote debugger port")
+	fs.BoolVar(&a.ignoreCache, "ignore-cache", false, "ignore cache when reloading")
 	fs.Parse(os.Args[1:])
 	return a.reload()
 }
